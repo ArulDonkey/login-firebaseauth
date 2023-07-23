@@ -2,13 +2,20 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:login_with_firebase/component/global-colors.dart';
 import 'package:login_with_firebase/component/my-button.dart';
 import 'package:login_with_firebase/component/my-colom.dart';
-import 'package:login_with_firebase/component/square-tile.dart';
+import 'package:login_with_firebase/pages/home-screen.dart';
+import 'package:login_with_firebase/provider/internet-provider.dart';
+import 'package:login_with_firebase/utils/auth-page.dart';
+import 'package:login_with_firebase/utils/next-screen.dart';
+import 'package:login_with_firebase/utils/snack-bar.dart';
+import 'package:provider/provider.dart';
+import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 class LoginPage extends StatefulWidget {
-  LoginPage({super.key});
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -19,6 +26,12 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
 
   final TextEditingController passwordController = TextEditingController();
+
+  final RoundedLoadingButtonController googleController =
+      RoundedLoadingButtonController();
+
+  final RoundedLoadingButtonController facebookController =
+      RoundedLoadingButtonController();
 
   // sign user in method
   void signUserIn() async {
@@ -88,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 30),
                 // logo
                 Container(
                   height: 200,
@@ -168,21 +181,53 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 // login with google/twitter in button
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Button Google
-                    SquareTile(
-                        logoPath: 'assets/svgs/google-color-svgrepo-com.svg'),
-                    SizedBox(width: 10),
+                    RoundedLoadingButton(
+                      onPressed: () {
+                        handleGoogleSignIn();
+                      },
+                      controller: googleController,
+                      height: 60,
+                      width: 80,
+                      borderRadius: 16,
+                      color: Colors.grey[200],
+                      child: Wrap(
+                        children: [
+                          SvgPicture.asset(
+                            'assets/svgs/google-color-svgrepo-com.svg',
+                            height: 30,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     // Button Twitter
-                    SquareTile(
-                        logoPath: 'assets/svgs/twitter-3-logo-svgrepo-com.svg'),
+                    RoundedLoadingButton(
+                      onPressed: () {
+                        handleGoogleSignIn();
+                      },
+                      controller: facebookController,
+                      height: 60,
+                      width: 80,
+                      borderRadius: 16,
+                      color: Colors.grey[200],
+                      child: Wrap(
+                        children: [
+                          SvgPicture.asset(
+                            'assets/svgs/twitter-3-logo-svgrepo-com.svg',
+                            height: 30,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 40),
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -208,5 +253,57 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  // handle google sign in
+  Future handleGoogleSignIn() async {
+    final sp = context.read<SignInProvider>();
+    final ip = context.read<InternetProvider>();
+    await ip.checkInternetConnection();
+
+    if (ip.hasInternet == false) {
+      openSnackbar(context, "Check Your Internet Connection", Colors.red);
+      googleController.reset();
+      // facebookController.reset();
+    } else {
+      await sp.signInWithGoogle().then(
+            (value) => {
+              if (sp.hasError == true)
+                {
+                  openSnackbar(context, sp.errorCode.toString(), Colors.red),
+                  googleController.reset(),
+                }
+              else
+                {
+                  // checking whether user exists or not
+                  sp.checkUserExists().then(
+                    (value) async {
+                      if (value == true) {
+                        // user exists
+                      } else {
+                        // user does not exist
+                        sp.saveDataToFirestore().then((value) => sp
+                            .saveDataToSharedPreferences()
+                            .then((value) => sp.setSignIn().then((value) {
+                                  googleController.success();
+                                  handleAfterSignIn();
+                                })));
+                      }
+                    },
+                  )
+                }
+            },
+          );
+    }
+  }
+
+  // handle after sign
+  handleAfterSignIn() {
+    Future.delayed(const Duration(milliseconds: 1000)).then((value) {
+      nextScreenReplacement(
+        context,
+        const HomePage(),
+      );
+    });
   }
 }

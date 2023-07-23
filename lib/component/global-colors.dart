@@ -7,5 +7,6 @@ class GlobalColors {
   static HexColor mainColors = HexColor('#DDDDDD');
   static HexColor textColors = HexColor('#7D7463');
   static HexColor buttonColors = HexColor('#F2BE22');
-  HexColor loadingColors = HexColor('#F2BE22');
+  static HexColor backgroundColors = HexColor('#F2BE22');
+  static HexColor textHomeColors = HexColor("#000000");
 }
